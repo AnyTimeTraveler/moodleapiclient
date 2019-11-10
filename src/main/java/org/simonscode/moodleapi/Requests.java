@@ -45,9 +45,8 @@ public class Requests {
                 .asObject(UserInfo.class).getBody();
     }
 
-    public static List<Course> getCourses(final String token, final String userid) throws UnirestException {
-        //noinspection unchecked
-        HttpResponse<List<Course>> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_enrol_get_users_courses")
+    public static Course[] getCourses(final String token, final String userid) throws UnirestException {
+        HttpResponse<Course[]> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_enrol_get_users_courses")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -57,11 +56,11 @@ public class Requests {
                 .header("Connection", "close")
                 .header("cache-control", "no-cache")
                 .body("moodlewssettingfilter=true&moodlewssettingfileurl=true&wstoken=" + token + "&userid=" + userid + "&wsfunction=core_enrol_get_users_courses")
-                .asObject(List.class);
+                .asObject(Course[].class);
         return response.getBody();
     }
 
-    public static List<Assignment> getAssignments(final String token, final List<Long> courses) throws UnirestException {
+    public static Assignment[] getAssignments(final String token, final List<Long> courses) throws UnirestException {
         StringBuilder bodyBuilder = new StringBuilder();
 
         int counter = 0;
@@ -71,8 +70,7 @@ public class Requests {
         bodyBuilder.append("&moodlewssettingfilter=true&moodlewssettingfileurl=true&wsfunction=mod_assign_get_assignments&wstoken=");
         bodyBuilder.append(token);
 
-        //noinspection unchecked
-        HttpResponse<List<Assignment>> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_assignments")
+        HttpResponse<Assignment[]> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_assignments")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -82,7 +80,7 @@ public class Requests {
                 .header("Connection", "close")
                 .header("cache-control", "no-cache")
                 .body(bodyBuilder.toString())
-                .asObject(List.class);
+                .asObject(Assignment[].class);
         return response.getBody();
     }
 
