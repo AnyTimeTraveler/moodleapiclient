@@ -1,10 +1,13 @@
 package org.simonscode.moodleapi.objects.assignment;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.util.List;
+
 @Data
-public class Assignment {
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class AssignmentSummary {
     private long id;
     private long cmid;
     private long course;

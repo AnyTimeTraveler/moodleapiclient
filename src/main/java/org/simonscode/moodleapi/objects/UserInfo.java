@@ -29,12 +29,14 @@ public class UserInfo {
     private long usermaxuploadfilesize;
     private int userhomepage;
 
-    private static class Function {
+    @Data
+    public static class Function {
         private String name;
         private String version;
     }
 
-    private static class AdvFeature {
+    @Data
+    public static class AdvFeature {
         private String name;
         private int value;
     }

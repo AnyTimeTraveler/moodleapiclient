@@ -1,5 +1,6 @@
 package org.simonscode.moodleapi.objects.course;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import org.simonscode.moodleapi.objects.course.module.Module;
 
@@ -9,7 +10,13 @@ import java.util.List;
 public class CourseContent {
     private long id;
     private String name;
-    private int visible;
+    private boolean visible;
+
+    @JsonProperty("visible")
+    public void setVisible(int visible) {
+        this.visible = visible == 1;
+    }
+
     private String summary;
     private int summaryformat;
     private List<Module> modules;

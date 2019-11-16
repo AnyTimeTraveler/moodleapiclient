@@ -1,5 +1,6 @@
 package org.simonscode.moodleapi.objects.course;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
@@ -9,7 +10,12 @@ public class Course {
     private String fullname;
     private long enrolledusercount;
     private String idnumber;
-    private int visible;
+    private boolean visible;
+
+    @JsonProperty("visible")
+    public void setVisible(int visible) {
+        this.visible = visible == 1;
+    }
     private String summary;
     private int summaryformat;
     private String format;

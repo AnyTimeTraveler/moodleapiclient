@@ -3,7 +3,7 @@ package org.simonscode.moodleapi.objects.course.module.content;
 import lombok.Data;
 
 @Data
-public class Content {
+public class FileContent extends ModuleContent {
     private String type;
     private String filename;
     private String filepath;
