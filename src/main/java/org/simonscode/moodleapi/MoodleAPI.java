@@ -7,6 +7,7 @@ import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import org.simonscode.moodleapi.helpers.PropertyBasedDeserializer;
 import org.simonscode.moodleapi.objects.UserInfo;
 import org.simonscode.moodleapi.objects.assignment.AssignmentReply;
 import org.simonscode.moodleapi.objects.assignment.AssignmentStatus;
@@ -22,7 +23,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-public class Requests {
+public class MoodleAPI {
 
     private static final String USER_AGENT = "MoodleBot/1.0.0";
 

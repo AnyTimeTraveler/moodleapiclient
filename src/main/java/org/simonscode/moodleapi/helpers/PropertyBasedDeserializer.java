@@ -1,4 +1,4 @@
-package org.simonscode.moodleapi;
+package org.simonscode.moodleapi.helpers;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
