@@ -8,5 +8,5 @@ import java.util.List;
 @Data
 public class UrlModule extends Module {
     private List<ModuleContent> contents;
-
+    private String description;
 }

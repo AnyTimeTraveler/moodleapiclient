@@ -12,7 +12,7 @@ public class Feedback {
     // "plugins": []
 
     @Data
-    private static class Grade {
+    public static class Grade {
         private long id;
         private long assignment;
         private long userid;

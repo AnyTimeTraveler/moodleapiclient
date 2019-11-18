@@ -13,10 +13,11 @@ import org.simonscode.moodleapi.objects.assignment.AssignmentReply;
 import org.simonscode.moodleapi.objects.assignment.AssignmentStatus;
 import org.simonscode.moodleapi.objects.course.Course;
 import org.simonscode.moodleapi.objects.course.CourseContent;
-import org.simonscode.moodleapi.objects.course.module.ForumModule;
-import org.simonscode.moodleapi.objects.course.module.LabelModule;
+import org.simonscode.moodleapi.objects.course.module.*;
 import org.simonscode.moodleapi.objects.course.module.Module;
-import org.simonscode.moodleapi.objects.course.module.ResourceModule;
+import org.simonscode.moodleapi.objects.course.module.content.FileContent;
+import org.simonscode.moodleapi.objects.course.module.content.ModuleContent;
+import org.simonscode.moodleapi.objects.course.module.content.URLContent;
 
 import java.io.File;
 import java.net.URLEncoder;
@@ -27,17 +28,28 @@ public class MoodleAPI {
 
     private static final String USER_AGENT = "MoodleBot/1.0.0";
 
+    private static String moodleAddress = "";
+
     static {
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
         SimpleModule module = new SimpleModule("module-deserializers", Version.unknownVersion());
-        final PropertyBasedDeserializer<Module> derserializer = new PropertyBasedDeserializer<>(Module.class, "modname");
-        derserializer.register("forum", ForumModule.class);
-        derserializer.register("resource", ResourceModule.class);
-        derserializer.register("label", LabelModule.class);
-        derserializer.register("resource", ResourceModule.class);
-        derserializer.register("resource", ResourceModule.class);
+        final PropertyBasedDeserializer<Module> moduleDerserializer = new PropertyBasedDeserializer<>(Module.class, "modname");
+        moduleDerserializer.register("forum", ForumModule.class);
+        moduleDerserializer.register("resource", ResourceModule.class);
+        moduleDerserializer.register("label", LabelModule.class);
+        moduleDerserializer.register("choicegroup", ChoiceGroupModule.class);
+        moduleDerserializer.register("choice", ChoiceModule.class);
+        moduleDerserializer.register("url", UrlModule.class);
+        moduleDerserializer.register("assign", AssignmentModule.class);
 
-        module.addDeserializer(Module.class, derserializer);
+        module.addDeserializer(Module.class, moduleDerserializer);
+        mapper.registerModule(module);
+
+        final PropertyBasedDeserializer<ModuleContent> contentDeserializer = new PropertyBasedDeserializer<>(ModuleContent.class, "type");
+        contentDeserializer.register("file", FileContent.class);
+        contentDeserializer.register("url", URLContent.class);
+
+        module.addDeserializer(ModuleContent.class, contentDeserializer);
         mapper.registerModule(module);
         Unirest.setObjectMapper(new ObjectMapper() {
             public String writeValue(Object value) {
@@ -60,8 +72,20 @@ public class MoodleAPI {
         });
     }
 
+    /**
+     * Set moodle address
+     *
+     * @param moodleAddress base address to your moodle installation
+     */
+    public static void setMoodleAddress(String moodleAddress) {
+        if (moodleAddress.endsWith("/")) {
+            moodleAddress = moodleAddress.substring(0, moodleAddress.lastIndexOf('/'));
+        }
+        MoodleAPI.moodleAddress = moodleAddress;
+    }
+
     public static String getToken(final String username, final String password) throws UnirestException {
-        return Unirest.post("https://moodle.hs-emden-leer.de/moodle/login/token.php")
+        return Unirest.post(moodleAddress + "/login/token.php")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -75,7 +99,7 @@ public class MoodleAPI {
     }
 
     public static UserInfo getUserInfo(final String token) throws UnirestException {
-        return Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_webservice_get_site_info")
+        return Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_webservice_get_site_info")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -89,7 +113,7 @@ public class MoodleAPI {
     }
 
     public static Course[] getCourses(final String token, final long userid) throws UnirestException {
-        HttpResponse<Course[]> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_enrol_get_users_courses")
+        HttpResponse<Course[]> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_enrol_get_users_courses")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -103,8 +127,8 @@ public class MoodleAPI {
         return response.getBody();
     }
 
-    public static CourseContent getCourseDetails(final String token, final long courseid) throws UnirestException {
-        HttpResponse<CourseContent> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_course_get_contents")
+    public static CourseContent[] getCourseDetails(final String token, final long courseid) throws UnirestException {
+        HttpResponse<CourseContent[]> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_course_get_contents")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -114,7 +138,7 @@ public class MoodleAPI {
                 .header("Connection", "keep-alive")
                 .header("cache-control", "no-cache")
                 .body("courseid=" + courseid + "&moodlewssettingfilter=true&moodlewssettingfileurl=true&wsfunction=core_course_get_contents&wstoken=" + token)
-                .asObject(CourseContent.class);
+                .asObject(CourseContent[].class);
         return response.getBody();
     }
 
@@ -131,7 +155,7 @@ public class MoodleAPI {
         bodyBuilder.append("moodlewssettingfilter=true&moodlewssettingfileurl=true&wsfunction=mod_assign_get_assignments&wstoken=");
         bodyBuilder.append(token);
 
-        HttpResponse<AssignmentReply> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_assignments")
+        HttpResponse<AssignmentReply> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_assignments")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -146,7 +170,7 @@ public class MoodleAPI {
     }
 
     public static AssignmentStatus getAssignmentStatus(final String token, final long userid, long assignmentid) throws UnirestException {
-        HttpResponse<AssignmentStatus> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_submission_status")
+        HttpResponse<AssignmentStatus> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_submission_status")
                 .header("Content-Type", "application/x-www-form-urlencoded")
                 .header("User-Agent", USER_AGENT)
                 .header("Accept", "*/*")
@@ -162,7 +186,7 @@ public class MoodleAPI {
 
 
     public void sendFile(String token) throws UnirestException {
-        HttpResponse<String> response = Unirest.post("https://moodle.hs-emden-leer.de/moodle/webservice/upload.php")
+        HttpResponse<String> response = Unirest.post(moodleAddress + "/webservice/upload.php")
                 .header("cache-control", "no-cache")
                 .header("Postman-Token", "8990733f-d565-4cf6-b008-7fb46a2536f0")
                 .field("token", token)
