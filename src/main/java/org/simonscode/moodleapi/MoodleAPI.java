@@ -3,10 +3,11 @@ package org.simonscode.moodleapi;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.Version;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import com.mashape.unirest.http.HttpResponse;
 import com.mashape.unirest.http.ObjectMapper;
 import com.mashape.unirest.http.Unirest;
 import com.mashape.unirest.http.exceptions.UnirestException;
+import com.mashape.unirest.request.HttpRequestWithBody;
+import com.mashape.unirest.request.body.MultipartBody;
 import lombok.Cleanup;
 import org.simonscode.moodleapi.helpers.PropertyBasedDeserializer;
 import org.simonscode.moodleapi.objects.SentFileResponse;
@@ -23,10 +24,8 @@ import org.simonscode.moodleapi.objects.course.module.content.URLContent;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class MoodleAPI {
@@ -34,6 +33,7 @@ public class MoodleAPI {
     private static final String USER_AGENT = "MoodleBot/1.0.0";
 
     private static String moodleAddress = "";
+    private static String moodleHost = "";
 
     static {
         com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -84,111 +84,80 @@ public class MoodleAPI {
      *
      * @param moodleAddress base address to your moodle installation
      */
-    public static void setMoodleAddress(String moodleAddress) {
+    public static void setMoodleAddresses(String moodleAddress, String moodleHost) {
         if (moodleAddress.endsWith("/")) {
             moodleAddress = moodleAddress.substring(0, moodleAddress.lastIndexOf('/'));
         }
         MoodleAPI.moodleAddress = moodleAddress;
+        MoodleAPI.moodleHost = moodleHost;
+    }
+
+
+    private static HttpRequestWithBody getMinimalRequest(String subURL) {
+        return Unirest.post(moodleAddress + subURL)
+                .header("User-Agent", USER_AGENT)
+                .header("Host", moodleHost)
+                .header("Accept", "*/*")
+                .header("Cache-Control", "no-cache")
+                .header("Accept-Encoding", "gzip, deflate")
+                .header("Connection", "keep-alive")
+                .header("cache-control", "no-cache");
+    }
+
+    private static MultipartBody getFormRequest(String token, String function) {
+        return getMinimalRequest("/webservice/rest/server.php")
+                .queryString("moodlewsrestformat", "json")
+                .queryString("wsfunction", function)
+                .header("Content-Type", "application/x-www-form-urlencoded")
+                .field("wstoken", token)
+                .field("moodlewssettingfilter", true)
+                .field("moodlewssettingfileurl", true)
+                .field("wsfunction", function);
     }
 
     public static String getToken(final String username, final String password) throws UnirestException {
-        return Unirest.post(moodleAddress + "/login/token.php")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .header("Cache-Control", "no-cache")
-                .header("Host", "moodle.hs-emden-leer.de")
-                .header("Accept-Encoding", "gzip, deflate")
-                .header("Connection", "keep-alive")
-                .header("cache-control", "no-cache")
-                .body("username=" + username + "&password=" + password + "&service=moodle_mobile_app")
-                .asJson().getBody().getObject().getString("token");
+        return getMinimalRequest("/login/token.php")
+                .field("username", username)
+                .field("password", password)
+                .field("service", "moodle_mobile_app")
+                .asJson()
+                .getBody()
+                .getObject()
+                .getString("token");
     }
 
     public static UserInfo getUserInfo(final String token) throws UnirestException {
-        return Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_webservice_get_site_info")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .header("Cache-Control", "no-cache")
-                .header("Host", "moodle.hs-emden-leer.de")
-                .header("Accept-Encoding", "gzip, deflate")
-                .header("Connection", "keep-alive")
-                .header("cache-control", "no-cache")
-                .body("moodlewssettingfilter=true&moodlewssettingfileurl=true&wsfunction=core_webservice_get_site_info&wstoken=" + token)
+        return getFormRequest(token, "core_webservice_get_site_info")
                 .asObject(UserInfo.class).getBody();
     }
 
     public static Course[] getCourses(final String token, final long userid) throws UnirestException {
-        HttpResponse<Course[]> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_enrol_get_users_courses")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .header("Cache-Control", "no-cache")
-                .header("Host", "moodle.hs-emden-leer.de")
-                .header("Accept-Encoding", "gzip, deflate")
-                .header("Connection", "keep-alive")
-                .header("cache-control", "no-cache")
-                .body("moodlewssettingfilter=true&moodlewssettingfileurl=true&wstoken=" + token + "&userid=" + userid + "&wsfunction=core_enrol_get_users_courses")
-                .asObject(Course[].class);
-        return response.getBody();
+        return getFormRequest(token, "core_enrol_get_users_courses")
+                .field("userid", userid)
+                .asObject(Course[].class).getBody();
     }
 
     public static CourseContent[] getCourseDetails(final String token, final long courseid) throws UnirestException {
-        HttpResponse<CourseContent[]> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=core_course_get_contents")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .header("Cache-Control", "no-cache")
-                .header("Host", "moodle.hs-emden-leer.de")
-                .header("Accept-Encoding", "gzip, deflate")
-                .header("Connection", "keep-alive")
-                .header("cache-control", "no-cache")
-                .body("courseid=" + courseid + "&moodlewssettingfilter=true&moodlewssettingfileurl=true&wsfunction=core_course_get_contents&wstoken=" + token)
-                .asObject(CourseContent[].class);
-        return response.getBody();
+        return getFormRequest(token, "core_course_get_contents")
+                .field("courseid", courseid)
+                .asObject(CourseContent[].class).getBody();
     }
 
     public static AssignmentReply getAssignments(final String token, final List<Long> courses) throws UnirestException {
-        StringBuilder bodyBuilder = new StringBuilder();
+        final MultipartBody request = getFormRequest(token, "mod_assign_get_assignments");
 
         int counter = 0;
         for (long course : courses) {
-            bodyBuilder.append(URLEncoder.encode("courseids[" + counter++ + "]", StandardCharsets.UTF_8));
-            bodyBuilder.append('=');
-            bodyBuilder.append(course);
-            bodyBuilder.append("&");
+            request.field("courseids[" + counter++ + "]", course);
         }
-        bodyBuilder.append("moodlewssettingfilter=true&moodlewssettingfileurl=true&wsfunction=mod_assign_get_assignments&wstoken=");
-        bodyBuilder.append(token);
-
-        HttpResponse<AssignmentReply> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_assignments")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .header("Cache-Control", "no-cache")
-                .header("Host", "moodle.hs-emden-leer.de")
-                .header("Accept-Encoding", "gzip, deflate")
-                .header("Connection", "keep-alive")
-                .header("cache-control", "no-cache")
-                .body(bodyBuilder.toString())
-                .asObject(AssignmentReply.class);
-        return response.getBody();
+        return request.asObject(AssignmentReply.class).getBody();
     }
 
     public static AssignmentStatus getAssignmentStatus(final String token, final long userid, long assignmentid) throws UnirestException {
-        HttpResponse<AssignmentStatus> response = Unirest.post(moodleAddress + "/webservice/rest/server.php?moodlewsrestformat=json&wsfunction=mod_assign_get_submission_status")
-                .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("User-Agent", USER_AGENT)
-                .header("Accept", "*/*")
-                .header("Cache-Control", "no-cache")
-                .header("Host", "moodle.hs-emden-leer.de")
-                .header("Accept-Encoding", "gzip, deflate")
-                .header("Connection", "keep-alive")
-                .header("cache-control", "no-cache")
-                .body("assignid=" + assignmentid + "&userid=" + userid + "&moodlewssettingfilter=true&moodlewssettingfileurl=true&wsfunction=mod_assign_get_submission_status&wstoken=" + token)
-                .asObject(AssignmentStatus.class);
-        return response.getBody();
+        return getFormRequest(token, "mod_assign_get_submission_status")
+                .field("assignid", assignmentid)
+                .field("userid", userid)
+                .asObject(AssignmentStatus.class).getBody();
     }
 
     public static InputStream downloadFile(String token, String url) throws UnirestException {
@@ -198,19 +167,25 @@ public class MoodleAPI {
                 .getBody();
     }
 
-    public static SentFileResponse[] sendFile(String token, File file) throws UnirestException, FileNotFoundException {
+    public static SentFileResponse[] sendFile(String token, File file) throws UnirestException, IOException {
         @Cleanup InputStream is = new FileInputStream(file);
         return sendFile(token, is, file.getName());
     }
 
-
     public static SentFileResponse[] sendFile(String token, InputStream data, String fileName) throws UnirestException {
-        return Unirest.post(moodleAddress + "/webservice/upload.php")
-                .header("cache-control", "no-cache")
+        return getMinimalRequest("/webservice/upload.php")
                 .field("token", token)
                 .field("filearea", "draft")
                 .field("itemid", "0")
                 .field("file", data, fileName)
                 .asObject(SentFileResponse[].class).getBody();
+    }
+
+    public static void assignFileToAssignment(String token, long assignmentId, long fileId) throws UnirestException {
+        final MultipartBody field = getFormRequest(token, "mod_assign_save_submission");
+        System.out.println(field.getEntity());
+        field.field("assignmentid", assignmentId)
+                .field("plugindata[files_filemanager]", fileId)
+                .asString();
     }
 }

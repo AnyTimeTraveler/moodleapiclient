@@ -5,19 +5,36 @@ import lombok.Data;
 
 @Data
 public class Module {
-    private long id;
-    private String url;
-    private String name;
-    private long instance;
-    private boolean visible;
+    protected long id;
+    protected String url;
+    protected String name;
+    protected long instance;
+    protected boolean visible;
 
     @JsonProperty("visible")
     public void setVisible(int visible) {
         this.visible = visible == 1;
     }
 
-    private String modicon;
-    private String modname;
-    private String modplural;
-    private int indent;
+    protected boolean uservisible;
+    protected boolean visibleoncoursepage;
+    protected String modicon;
+    protected String modname;
+    protected String modplural;
+    protected int indent;
+    protected String onclick;
+    protected String customdata;
+    protected boolean completion;
+    private String afterlink;
+
+    @JsonProperty("visibleoncoursepage")
+    public void setVisibleOnCoursePage(int visible) {
+        this.visibleoncoursepage = visible == 1;
+    }
+
+    @JsonProperty("completion")
+    public void setCompletion(int completion) {
+        this.completion = completion == 1;
+    }
+
 }

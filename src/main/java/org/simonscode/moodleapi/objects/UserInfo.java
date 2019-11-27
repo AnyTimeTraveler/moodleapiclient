@@ -1,10 +1,12 @@
 package org.simonscode.moodleapi.objects;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 import java.util.List;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = false)
 public class UserInfo {
     private String sitename;
     private String username;
@@ -28,6 +30,10 @@ public class UserInfo {
     private long userquota;
     private long usermaxuploadfilesize;
     private int userhomepage;
+    private String siteid;
+    private String sitecalendartype;
+    private String usercalendartype;
+    private String theme;
 
     @Data
     public static class Function {

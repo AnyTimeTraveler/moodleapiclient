@@ -19,5 +19,8 @@ public class CourseContent {
 
     private String summary;
     private int summaryformat;
+    private long section;
+    private long hiddenbynumsections;
+    private boolean uservisible;
     private List<Module> modules;
 }
